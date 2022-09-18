@@ -1,0 +1,8 @@
+start_frequency,1000
+end_frequency,1000000
+frequency_steps,10
+vpp,10
+sweep_type,log
+scale,db
+scope_id,TCPIP::192.168.31.90::INSTR
+awg_id,USB0::0x1AB1::0x0643::DG8A241801131::INSTR
