@@ -168,7 +168,6 @@ if scale == 'db':
 	fig_db = plt.figure(1)
 	plt.plot(freq_values,db,alpha=0.75)				#Graph data
 	
-	#yhat = scipy.signal.savgol_filter(db, 9, 3) # window size 51, polynomial order 3
 	X_Y_Spline = make_interp_spline(freq_values, db)
 	X_ = np.linspace(freq_values.min(), freq_values.max(), 200)
 	Y_ = X_Y_Spline(X_)
@@ -190,7 +189,6 @@ elif scale == 'v':
 	fig_db = plt.figure(1)
 	plt.plot(freq_values,ch2_vpp,alpha=0.75)			#Graph data
 
-	#yhat = scipy.signal.savgol_filter(ch2_vpp, 9, 3) # window size 51, polynomial order 3
 	X_Y_Spline = make_interp_spline(freq_values, ch2_vpp)
 	X_ = np.linspace(freq_values.min(), freq_values.max(), 200)
 	Y_ = X_Y_Spline(X_)
@@ -207,18 +205,12 @@ elif scale == 'v':
 fig_phase = plt.figure(2)
 plt.plot(freq_values, phase_values,alpha=0.75)				#Graph data
 
-#yhat = scipy.signal.savgol_filter(phase_values, 9, 3) # window size 51, polynomial order 3
 X_Y_Spline = make_interp_spline(freq_values, phase_values)
 X_ = np.linspace(freq_values.min(), freq_values.max(), 200)
 Y_ = X_Y_Spline(X_)
 
 plt.plot(X_, Y_, "--", color="red", label="Smoothed data")
 
-#frame1 = plt.gca()
-#frame1.axes.xaxis.set_ticklabels([])
-
-#yhat = scipy.signal.savgol_filter(phase_values, 9, 3) # window size 51, polynomial order 3
-#plt.plot(freq_values, yhat, "--", color="red", label="Smoothed data")
 if scale == 'db':
 	plt.axvline(freq_cutoff, color = 'orange', linestyle = ':', label = 'Cutoff Frequency (~ ' + f'{round(freq_cutoff,2):,}' + "Hz)")
 plt.xlabel('f')
