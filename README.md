@@ -28,3 +28,9 @@ The scope and function generator can be connected by either USB-TMC or LAN.
 | awg_id  | address  | USB0::0x1AB1::0x0643::DG8A24131337::INSTR |
 
 5. execute the script. e.g `python3.10 BodePlot.py`
+
+## Screenshots ##
+
+![command output](https://github.com/DanielStoelzner/RIGOL-DS1054Z-DG800-DG900-Bode-Plot/blob/main/Screenshots/cmd.png)
+
+![plots](https://github.com/DanielStoelzner/RIGOL-DS1054Z-DG800-DG900-Bode-Plot/blob/main/Screenshots/plots.png)
