@@ -1,6 +1,6 @@
-start_frequency,1000
-end_frequency,1000000
-frequency_steps,10
+start_frequency,100
+end_frequency,100000
+frequency_steps,50
 vpp,10
 sweep_type,log
 scale,db
