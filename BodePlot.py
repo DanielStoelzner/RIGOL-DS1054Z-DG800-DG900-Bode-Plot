@@ -176,7 +176,7 @@ if scale == 'db':
 	freq_cutoff = X_[find_nearest(Y_, value=-3.0)]
 	
 	plt.axhline(-3.0, color = 'orchid', linestyle = ':', label = '-3dB')
-	plt.axvline(freq_cutoff, color = 'orange', linestyle = ':', label = 'Cutoff Frequency (~ ' + str(round(freq_cutoff, 2)) + ")")
+	plt.axvline(freq_cutoff, color = 'orange', linestyle = ':', label = 'Cutoff Frequency (~ ' + str(round(freq_cutoff, 2)) + "Hz)")
 	plt.xlabel('f')
 	plt.ylabel('dB')
 	plt.title('Magnitude Bode Plot')
