@@ -48,8 +48,8 @@ if sweep != 'log' and sweep != 'lin':
 
 scale = config.readline().split(',')[1]
 scale = scale[:-1]
-if scale != 'db' and scale != 'v':
-	print("ERROR. Scale must be either 'db' or 'v'")
+if scale != 'db' and scale != 'v' and scale != 'both':
+	print("ERROR. Scale must be either 'db', 'v' or 'both'")
 	print('Please press Enter to exit')
 	input()
 	exit(1)
@@ -168,8 +168,8 @@ def find_nearest(array, value):
 	idx = (np.abs(array - value)).argmin()
 	return idx
 
-if scale == 'db':
-	fig_db = plt.figure(1)
+if scale == 'db' or scale == 'both':
+	fig_db = plt.figure('dB Bode Plot')
 	plt.plot(freq_values,db,alpha=0.75)
 
 	X_Y_Spline = make_interp_spline(freq_values, db)
@@ -189,14 +189,20 @@ if scale == 'db':
 		plt.xscale("log")
 	plt.legend()
 
-elif scale == 'v':
-	fig_db = plt.figure(1)
+if scale == 'v' or scale == 'both':
+	fig_db = plt.figure('V Bode Plot')
 	plt.plot(freq_values,ch2_vpp,alpha=0.75)
 
 	X_Y_Spline = make_interp_spline(freq_values, ch2_vpp)
 	X_ = np.linspace(freq_values.min(), freq_values.max(), 100)
 	Y_ = X_Y_Spline(X_)
 	plt.plot(X_, Y_, "--", color="red", label="Smoothed data")
+	
+	ch1_vpp_3db = np.average(ch1_vpp) * 0.707
+	freq_cutoff = X_[find_nearest(Y_, value=ch1_vpp_3db)]
+	
+	plt.axhline(ch1_vpp_3db, color = 'orchid', linestyle = ':', label = '70.7%')
+	plt.axvline(freq_cutoff, color = 'orange', linestyle = ':', label = 'Cutoff Frequency (~ ' + str(round(freq_cutoff, 2)) + "Hz)")
 
 	plt.xlabel('f')
 	plt.ylabel('Vout')
@@ -206,13 +212,13 @@ elif scale == 'v':
 		plt.xscale("log")
 	plt.legend()
 
-fig_phase = plt.figure(2)
+fig_phase = plt.figure('Phase Bode Plot')
 plt.plot(freq_values, phase_values,alpha=0.75)
 
 yhat = scipy.signal.savgol_filter(phase_values, 9, 3)
 plt.plot(freq_values, yhat, "--", color="red", label="Smoothed data")
 
-if scale == 'db':
+if scale == 'db' or scale == 'both':
 	plt.axvline(freq_cutoff, color = 'orange', linestyle = ':', label = 'Cutoff Frequency (~ ' + f'{round(freq_cutoff,2):,}' + "Hz)")
 plt.xlabel('f')
 plt.ylabel('°')
