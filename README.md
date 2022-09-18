@@ -1,4 +1,4 @@
-# RIGOL-DS1054Z-DG800-DG900-Bode-Plot
+# RIGOL DS1054Z + DG800/DG900 Bode Plot in Python
 
 This project is based on the excellent work of [ailr16](https://github.com/ailr16) [(ailr16/BodePlot-DS1054Z)](https://github.com/ailr16/BodePlot-DS1054Z) and [jbtronics](https://github.com/jbtronics) [(jbtronics/DS1054_BodePlotter)](https://github.com/jbtronics/DS1054_BodePlotter)
 
@@ -22,8 +22,8 @@ The scope and function generator can be connected by either USB-TMC or LAN.
 | end_frequency  | number  | 100000 |
 | frequency_steps  | number  | 20 |
 | vpp  | number  | 5 |
-| sweep_type  | log or lin  | log |
-| scale  | db or v  | db |
+| sweep_type  | 'log' or 'lin'  | log |
+| scale  | 'db', 'v' or 'both'  | db |
 | scope_id  | address  | TCPIP::192.168.1.2::INSTR |
 | awg_id  | address  | USB0::0x1AB1::0x0643::DG8A24131337::INSTR |
 
