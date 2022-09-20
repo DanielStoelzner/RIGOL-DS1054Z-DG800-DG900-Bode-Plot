@@ -7,6 +7,7 @@ import math
 from ds1054z import DS1054Z
 import scipy
 from scipy.interpolate import make_interp_spline
+from scipy.interpolate import PchipInterpolator
 
 config = open('config.txt')
 time_delay = 2
@@ -98,7 +99,7 @@ try:
 	try:
 		awg = rm.open_resource(instrument2)
 	except:
-		print("AWG: not found")
+		print("AWG:   not found")
 		raise Exception()
 
 	print ("AWG: " + awg.query("*IDN?"))
@@ -148,9 +149,17 @@ scope.write(":MEASure:STATistic:RESet")
 i = 0
 
 while i < freq_steps:
+	#scope.write(":STOP")
+	
+	#time.sleep(.1)
+	scope.write("TIMebase:MAIN:SCAle "+ str(1/(8*freqs[i])))
+	
 	awg.write(':SOUR1:FREQ '+str(freqs[i]))
-	scope.write("TIMebase:MAIN:SCAle "+ str(1/(4*freqs[i])))
+	scope.write(":DISPlay:CLEar")
+	#time.sleep(.1)
+	
 	scope.write(":MEASure:STATistic:RESet")
+	#scope.write(":RUN")
 	time.sleep(time_delay)
 	ch1_vpp[i] = scope.query("MEASure:STATistic:ITEM? AVERages,VPP,CHANnel1")
 	ch2_vpp[i] = scope.query("MEASure:STATistic:ITEM? AVERages,VPP,CHANnel2")
@@ -172,12 +181,15 @@ if scale == 'db' or scale == 'both':
 	fig_db = plt.figure('dB Bode Plot')
 	plt.plot(freq_values,db,alpha=0.75)
 
-	X_Y_Spline = make_interp_spline(freq_values, db)
-	X_ = np.linspace(freq_values.min(), freq_values.max(), 100)
-	Y_ = X_Y_Spline(X_)
-	plt.plot(X_, Y_, "--", color="red", label="Smoothed data")
+	yhat = scipy.signal.savgol_filter(db, 5, 3)
 
-	freq_cutoff = X_[find_nearest(Y_, value=-3.0)]
+	interp_obj = PchipInterpolator(freq_values, yhat)
+	new_x_vals = np.linspace(np.log10(freq_values.min()), np.log10(freq_values.max()), 50)
+	new_x_vals = np.power(10, new_x_vals)
+	new_y_vals = interp_obj(new_x_vals)
+	plt.plot(new_x_vals, new_y_vals, "--", color="red", label="Smoothed data")
+
+	freq_cutoff = new_x_vals[find_nearest(new_y_vals, value=-3.01)]
 
 	plt.axhline(-3.0, color = 'orchid', linestyle = ':', label = '-3dB')
 	plt.axvline(freq_cutoff, color = 'orange', linestyle = ':', label = 'Cutoff Frequency (~ ' + str(round(freq_cutoff, 2)) + "Hz)")
@@ -188,18 +200,22 @@ if scale == 'db' or scale == 'both':
 	if sweep == 'log':
 		plt.xscale("log")
 	plt.legend()
+	plt.tight_layout()
 
 if scale == 'v' or scale == 'both':
 	fig_db = plt.figure('V Bode Plot')
 	plt.plot(freq_values,ch2_vpp,alpha=0.75)
 
-	X_Y_Spline = make_interp_spline(freq_values, ch2_vpp)
-	X_ = np.linspace(freq_values.min(), freq_values.max(), 100)
-	Y_ = X_Y_Spline(X_)
-	plt.plot(X_, Y_, "--", color="red", label="Smoothed data")
+	yhat = scipy.signal.savgol_filter(ch2_vpp, 5, 3)
+
+	interp_obj = PchipInterpolator(freq_values, ch2_vpp)
+	new_x_vals = np.linspace(np.log10(freq_values.min()), np.log10(freq_values.max()), 50)
+	new_x_vals = np.power(10, new_x_vals)
+	new_y_vals = interp_obj(new_x_vals)
+	plt.plot(new_x_vals, new_y_vals, "--", color="red", label="Smoothed data")
 	
 	ch1_vpp_3db = np.average(ch1_vpp) * 0.707
-	freq_cutoff = X_[find_nearest(Y_, value=ch1_vpp_3db)]
+	freq_cutoff = new_x_vals[find_nearest(new_y_vals, value=ch1_vpp_3db)]
 	
 	plt.axhline(ch1_vpp_3db, color = 'orchid', linestyle = ':', label = '70.7%')
 	plt.axvline(freq_cutoff, color = 'orange', linestyle = ':', label = 'Cutoff Frequency (~ ' + str(round(freq_cutoff, 2)) + "Hz)")
@@ -211,12 +227,18 @@ if scale == 'v' or scale == 'both':
 	if sweep == 'log':
 		plt.xscale("log")
 	plt.legend()
+	plt.tight_layout()
 
 fig_phase = plt.figure('Phase Bode Plot')
 plt.plot(freq_values, phase_values,alpha=0.75)
 
-yhat = scipy.signal.savgol_filter(phase_values, 9, 3)
-plt.plot(freq_values, yhat, "--", color="red", label="Smoothed data")
+yhat = scipy.signal.savgol_filter(phase_values, 5, 3)
+
+interp_obj = PchipInterpolator(freq_values, yhat)
+new_x_vals = np.linspace(np.log10(freq_values.min()), np.log10(freq_values.max()), 50)
+new_x_vals = np.power(10, new_x_vals)
+new_y_vals = interp_obj(new_x_vals)
+plt.plot(new_x_vals, new_y_vals, "--", color="red", label="Smoothed data")
 
 if scale == 'db' or scale == 'both':
 	plt.axvline(freq_cutoff, color = 'orange', linestyle = ':', label = 'Cutoff Frequency (~ ' + f'{round(freq_cutoff,2):,}' + "Hz)")
@@ -227,6 +249,7 @@ plt.grid()
 if sweep == 'log':
 	plt.xscale("log")
 plt.legend()
+plt.tight_layout()
 
 awg.write(':OUTPut1 OFF')
 
