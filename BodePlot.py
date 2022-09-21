@@ -10,7 +10,6 @@ from scipy.interpolate import make_interp_spline
 from scipy.interpolate import PchipInterpolator
 
 config = open('config.txt')
-time_delay = 2
 
 freq_start = float(config.readline().split(',')[1])
 freq_end = float(config.readline().split(',')[1])
@@ -41,8 +40,8 @@ if wave_v_max <= 0:
 
 sweep = config.readline().split(',')[1]
 sweep = sweep[:-1]
-if sweep != 'log' and sweep != 'lin':
-	print("ERROR. Sweep type must be either 'log' or 'lin'")
+if sweep != 'log' and sweep != 'linear':
+	print("ERROR. Sweep type must be either 'log' or 'linear'")
 	print('Please press Enter to exit')
 	input()
 	exit(1)
@@ -54,13 +53,6 @@ if scale != 'db' and scale != 'v' and scale != 'both':
 	print('Please press Enter to exit')
 	input()
 	exit(1)
-
-freqs = np.zeros(freq_steps)
-
-if sweep == 'log':
-	freqs = np.logspace(np.log10(freq_start), np.log10(freq_end), num=freq_steps)
-else:
-	freqs = np.linspace(freq_start, freq_end, num=freq_steps)
 
 instrument = config.readline().split(',')[1]
 instrument = instrument[:-1]
@@ -92,10 +84,12 @@ try:
 		
 	print ("Scope: " + scope.idn)
 
-	scope.write("MEASure:CLEar ALL")
-	scope.write("MEASure:ITEM VPP,CHANnel1")
-	scope.write("MEASure:ITEM VPP,CHANnel2")
-
+	scope.write(":MEASure:CLEar ALL")
+	scope.write(":MEASure:STATistic:DISPlay 1")
+	scope.write(":MEASure:ITEM VPP,CHANnel1")
+	scope.write(":MEASure:ITEM VPP,CHANnel2")
+	scope.write(":MEASure:ITEM VMID,CHANnel1")
+	scope.write(":MEASure:ITEM VMID,CHANnel2")
 	try:
 		awg = rm.open_resource(instrument2)
 	except:
@@ -116,59 +110,67 @@ awg.write(':SOUR1:VOLTage:LOW -'+str(wave_v_max/2))
 awg.write(":OUTPut1:IMP INF")
 awg.write(':OUTPut1 ON')
 
-time.sleep(1)
-
-ch1_vpp = np.zeros(freq_steps)
-ch2_vpp = np.zeros(freq_steps)
-db = np.zeros(freq_steps)
-freq_values = np.zeros(freq_steps)
+ch1_vpp      = np.zeros(freq_steps)
+ch2_vpp      = np.zeros(freq_steps)
+db           = np.zeros(freq_steps)
+freq_values  = np.zeros(freq_steps)
 phase_values = np.zeros(freq_steps)
+freqs        = np.zeros(freq_steps)
 
-freq = freq_start
-
-scope.write("TIMebase:MAIN:SCAle " + str(1/(8*freq)))
+if sweep == 'log':
+	freqs = np.logspace(np.log10(freq_start), np.log10(freq_end), num=freq_steps)
+else:
+	freqs = np.linspace(freq_start, freq_end, num=freq_steps)
 
 scope.write(":ACQuire:TYPE AVERages")
-scope.write(":ACQuire:AVERages 8")
+scope.write(":ACQuire:AVERages 16")
+scope.write(":CHANnel1:VERNier 1")
+scope.write(":CHANnel2:VERNier 1")
+scope.write(":CHANnel1:BWLimit OFF")
+scope.write(":CHANnel2:BWLimit OFF")
+scope.write(":CHANnel2:COUPling AC")
+scope.write(":CHANnel2:COUPling AC")
+scope.write(":TRIGger:EDGe:SLOPe POSitive")
+scope.write(":TRIGger:EDGe:LEVel 0")
 
-time.sleep(.5)
+def scope_reset():
+	scope.write(":TIMebase:MAIN:SCAle " + str(1/(8*freq_start)))
+	scope.write(":CHANnel1:SCALe 5")
+	scope.write(":CHANnel2:SCALe 5")
+	scope.write(":CHANnel1:OFFSet 0")
+	scope.write(":CHANnel2:OFFSet 0")
 
-scope.write("CHANnel1:SCALe 5")
-scope.write("CHANnel2:SCALe 5")
+scope_reset()
 
-time.sleep(2)
-scope.set_channel_scale(1, float(scope.query("MEASure:STATistic:ITEM? AVERages,VPP,CHANnel1")) / 4, use_closest_match=True)
-time.sleep(2)
-scope.set_channel_scale(2, float(scope.query("MEASure:STATistic:ITEM? AVERages,VPP,CHANnel2")) / 4, use_closest_match=True)
-time.sleep(1)
+for x in range(2):
+	scope.write(":DISPlay:CLEar")
+	scope.write(":MEASure:STATistic:RESet")
+	time.sleep(1)
+	scope.write(":CHANnel1:OFFSet "+str(float(scope.query("MEASure:STATistic:ITEM? AVERages,VMID,CHANnel1"))*-1))
+	time.sleep(.3)
+	scope.write(":CHANnel2:OFFSet "+str(float(scope.query("MEASure:STATistic:ITEM? AVERages,VMID,CHANnel2"))*-1))
+	time.sleep(.3)
+	scope.write(":CHANnel1:SCALe "+str(float(scope.query("MEASure:STATistic:ITEM? AVERages,VPP,CHANnel1")) / 7))
+	time.sleep(.3)
+	scope.write(":CHANnel2:SCALe "+str(float(scope.query("MEASure:STATistic:ITEM? AVERages,VPP,CHANnel2")) / 7))
 
-scope.write("MEASure:SETup:PSA CHANnel1")
-scope.write("MEASure:STATistic:ITEM RPHase")
+time.sleep(.3)
+scope.write(":MEASure:SETup:PSA CHANnel1")
+scope.write(":MEASure:STATistic:ITEM RPHase")
 scope.write(":MEASure:STATistic:RESet")
 
-i = 0
-
-while i < freq_steps:
-	#scope.write(":STOP")
-	
-	#time.sleep(.1)
+for i in range(freq_steps):
 	scope.write("TIMebase:MAIN:SCAle "+ str(1/(8*freqs[i])))
-	
 	awg.write(':SOUR1:FREQ '+str(freqs[i]))
-	scope.write(":DISPlay:CLEar")
-	#time.sleep(.1)
-	
+	scope.write(":DISPlay:CLEar")	
 	scope.write(":MEASure:STATistic:RESet")
-	#scope.write(":RUN")
-	time.sleep(time_delay)
+	time.sleep(1.5)
 	ch1_vpp[i] = scope.query("MEASure:STATistic:ITEM? AVERages,VPP,CHANnel1")
 	ch2_vpp[i] = scope.query("MEASure:STATistic:ITEM? AVERages,VPP,CHANnel2")
 	phase_values[i] = scope.query("MEASure:STATistic:ITEM? AVERages,RPHase")
-	freq_values[i] = freqs[i]
 	db[i] = 20*np.log10(ch2_vpp[i]/ch1_vpp[i])
 	print (str(i+1) + '/' + str(freq_steps) + ' ' + f'{round(freqs[i],2):,}' + 'Hz ' + str(round(phase_values[i],2)) + '° ' + str(round(db[i],2)) + 'dB')
-	scope.set_channel_scale(2, ch2_vpp[i] / 4, use_closest_match=True)
-	i = i + 1
+	scope.set_channel_scale(2, ch2_vpp[i] / 7)
 
 print("-"*32)
 
@@ -179,12 +181,12 @@ def find_nearest(array, value):
 
 if scale == 'db' or scale == 'both':
 	fig_db = plt.figure('dB Bode Plot')
-	plt.plot(freq_values,db,alpha=0.75)
+	plt.plot(freqs,db,alpha=0.75)
 
 	yhat = scipy.signal.savgol_filter(db, 5, 3)
 
-	interp_obj = PchipInterpolator(freq_values, yhat)
-	new_x_vals = np.linspace(np.log10(freq_values.min()), np.log10(freq_values.max()), 50)
+	interp_obj = PchipInterpolator(freqs, yhat)
+	new_x_vals = np.linspace(np.log10(freqs.min()), np.log10(freqs.max()), 50)
 	new_x_vals = np.power(10, new_x_vals)
 	new_y_vals = interp_obj(new_x_vals)
 	plt.plot(new_x_vals, new_y_vals, "--", color="red", label="Smoothed data")
@@ -197,19 +199,18 @@ if scale == 'db' or scale == 'both':
 	plt.ylabel('dB')
 	plt.title('dB Bode Plot')
 	plt.grid()
-	if sweep == 'log':
-		plt.xscale("log")
+	plt.xscale(sweep)
 	plt.legend()
 	plt.tight_layout()
 
 if scale == 'v' or scale == 'both':
 	fig_db = plt.figure('V Bode Plot')
-	plt.plot(freq_values,ch2_vpp,alpha=0.75)
+	plt.plot(freqs,ch2_vpp,alpha=0.75)
 
 	yhat = scipy.signal.savgol_filter(ch2_vpp, 5, 3)
 
-	interp_obj = PchipInterpolator(freq_values, ch2_vpp)
-	new_x_vals = np.linspace(np.log10(freq_values.min()), np.log10(freq_values.max()), 50)
+	interp_obj = PchipInterpolator(freqs, ch2_vpp)
+	new_x_vals = np.linspace(np.log10(freqs.min()), np.log10(freqs.max()), 50)
 	new_x_vals = np.power(10, new_x_vals)
 	new_y_vals = interp_obj(new_x_vals)
 	plt.plot(new_x_vals, new_y_vals, "--", color="red", label="Smoothed data")
@@ -224,18 +225,17 @@ if scale == 'v' or scale == 'both':
 	plt.ylabel('Vout')
 	plt.title('V Bode Plot')
 	plt.grid()
-	if sweep == 'log':
-		plt.xscale("log")
+	plt.xscale(sweep)
 	plt.legend()
 	plt.tight_layout()
 
 fig_phase = plt.figure('Phase Bode Plot')
-plt.plot(freq_values, phase_values,alpha=0.75)
+plt.plot(freqs, phase_values,alpha=0.75)
 
 yhat = scipy.signal.savgol_filter(phase_values, 5, 3)
 
-interp_obj = PchipInterpolator(freq_values, yhat)
-new_x_vals = np.linspace(np.log10(freq_values.min()), np.log10(freq_values.max()), 50)
+interp_obj = PchipInterpolator(freqs, yhat)
+new_x_vals = np.linspace(np.log10(freqs.min()), np.log10(freqs.max()), 50)
 new_x_vals = np.power(10, new_x_vals)
 new_y_vals = interp_obj(new_x_vals)
 plt.plot(new_x_vals, new_y_vals, "--", color="red", label="Smoothed data")
@@ -246,14 +246,13 @@ plt.xlabel('f')
 plt.ylabel('°')
 plt.title('Phase Bode Plot')
 plt.grid()
-if sweep == 'log':
-	plt.xscale("log")
+plt.xscale(sweep)
 plt.legend()
 plt.tight_layout()
 
 awg.write(':OUTPut1 OFF')
-
-plt.show()
-
+scope_reset()
 scope.close()
 awg.close()
+
+plt.show()
