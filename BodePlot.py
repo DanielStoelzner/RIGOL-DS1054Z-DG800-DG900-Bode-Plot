@@ -31,8 +31,8 @@ if freq_steps <= 0:
 	input()
 	exit(1)
 	
-wave_v_max = float(config.readline().split(',')[1])
-if wave_v_max <= 0:
+wave_v_pp = float(config.readline().split(',')[1])
+if wave_v_pp <= 0:
 	print('ERROR. Max Voltage must be greater than zero')
 	print('Please press Enter to exit')
 	input()
@@ -60,17 +60,17 @@ instrument = instrument[:-1]
 instrument2 = config.readline().split(',')[1]
 instrument2 = instrument2[:-1]
 
-print("-"*32)
+print("-"*62)
 print("Configuration:")
 print("Start Frequency: " + str(freq_start))
 print("End Frequency: " + str(freq_end))
 print("Frequency Steps: " + str(freq_steps))
-print("Max Voltage: " + str(wave_v_max))
+print("Voltage P-P: " + str(wave_v_pp))
 print("Sweep Type: " + str(sweep))
 print("Scale: " + scale)
 print("Scope ID: " + instrument)
 print("AWG ID: " + instrument2)
-print("-"*32)
+print("-"*62)
 print(" ")
 
 rm = visa.ResourceManager()
@@ -81,32 +81,48 @@ try:
 	except:
 		print("Scope: not found")
 		raise Exception() 
-		
 	print ("Scope: " + scope.idn)
-
-	scope.write(":MEASure:CLEar ALL")
-	scope.write(":MEASure:STATistic:DISPlay 1")
-	scope.write(":MEASure:ITEM VPP,CHANnel1")
-	scope.write(":MEASure:ITEM VPP,CHANnel2")
-	scope.write(":MEASure:ITEM VMID,CHANnel1")
-	scope.write(":MEASure:ITEM VMID,CHANnel2")
 	try:
 		awg = rm.open_resource(instrument2)
 	except:
 		print("AWG:   not found")
 		raise Exception()
-
 	print ("AWG: " + awg.query("*IDN?"))
-	
 except:
 	print('Please press Enter to exit')
 	input()
 	exit(1)
 	
+scope.write(":MEASure:CLEar ALL")
+scope.write(":MEASure:STATistic:DISPlay ON")
+scope.write(":MEASure:ITEM VPP,CHANnel1")
+scope.write(":MEASure:ITEM VPP,CHANnel2")
+scope.write(":MEASure:ITEM VAVG,CHANnel1")
+scope.write(":MEASure:ITEM VAVG,CHANnel2")
+scope.write(":MEASure:SETup:PSA CHANnel1")
+scope.write(":MEASure:STATistic:ITEM RPHase")
+
+scope.write(":ACQuire:TYPE NORMal")
+
+scope.write(":CHANnel1:DISPlay ON")
+scope.write(":CHANnel2:DISPlay ON")
+scope.write(":CHANnel1:VERNier ON")
+scope.write(":CHANnel2:VERNier ON")
+scope.write(":CHANnel1:BWLimit OFF")
+scope.write(":CHANnel2:BWLimit OFF")
+scope.write(":CHANnel1:COUPling AC")
+scope.write(":CHANnel2:COUPling AC")
+
+scope.write(":TRIGger:EDGe:SOURce CHANnel1")
+scope.write(":TRIGger:EDGe:SLOPe POSitive")
+scope.write(":TRIGger:EDGe:LEVel 0")
+scope.write(":TRIGger:SWEep AUTO")
+scope.write(":TRIGger:NREJect ON")
+
 awg.write(':SOURce1:FUNC SINusoid')
 awg.write(':SOURce1:FREQ '+str(freq_start))
-awg.write(':SOUR1:VOLTage:HIGH '+str(wave_v_max/2))
-awg.write(':SOUR1:VOLTage:LOW -'+str(wave_v_max/2))
+awg.write(':SOURce1:VOLTage:HIGH '+str(wave_v_pp/2))
+awg.write(':SOURce1:VOLTage:LOW -'+str(wave_v_pp/2))
 awg.write(":OUTPut1:IMP INF")
 awg.write(':OUTPut1 ON')
 
@@ -122,21 +138,10 @@ if sweep == 'log':
 else:
 	freqs = np.linspace(freq_start, freq_end, num=freq_steps)
 
-scope.write(":ACQuire:TYPE AVERages")
-scope.write(":ACQuire:AVERages 16")
-scope.write(":CHANnel1:VERNier 1")
-scope.write(":CHANnel2:VERNier 1")
-scope.write(":CHANnel1:BWLimit OFF")
-scope.write(":CHANnel2:BWLimit OFF")
-scope.write(":CHANnel2:COUPling AC")
-scope.write(":CHANnel2:COUPling AC")
-scope.write(":TRIGger:EDGe:SLOPe POSitive")
-scope.write(":TRIGger:EDGe:LEVel 0")
-
 def scope_reset():
 	scope.write(":TIMebase:MAIN:SCAle " + str(1/(8*freq_start)))
-	scope.write(":CHANnel1:SCALe 5")
-	scope.write(":CHANnel2:SCALe 5")
+	scope.write(":CHANnel1:SCALe "+str(wave_v_pp/2))
+	scope.write(":CHANnel2:SCALe "+str(wave_v_pp/2))
 	scope.write(":CHANnel1:OFFSet 0")
 	scope.write(":CHANnel2:OFFSet 0")
 
@@ -146,33 +151,39 @@ for x in range(2):
 	scope.write(":DISPlay:CLEar")
 	scope.write(":MEASure:STATistic:RESet")
 	time.sleep(1)
-	scope.write(":CHANnel1:OFFSet "+str(float(scope.query("MEASure:STATistic:ITEM? AVERages,VMID,CHANnel1"))*-1))
-	time.sleep(.3)
-	scope.write(":CHANnel2:OFFSet "+str(float(scope.query("MEASure:STATistic:ITEM? AVERages,VMID,CHANnel2"))*-1))
-	time.sleep(.3)
-	scope.write(":CHANnel1:SCALe "+str(float(scope.query("MEASure:STATistic:ITEM? AVERages,VPP,CHANnel1")) / 7))
-	time.sleep(.3)
-	scope.write(":CHANnel2:SCALe "+str(float(scope.query("MEASure:STATistic:ITEM? AVERages,VPP,CHANnel2")) / 7))
+	scope.write(":TRIGger:EDGe:LEVel "+str(float(scope.query("MEASure:STATistic:ITEM? AVERages,VAVG,CHANnel1"))))
+	scope.write(":CHANnel1:OFFSet "   +str(float(scope.query("MEASure:STATistic:ITEM? AVERages,VAVG,CHANnel1"))*-1))
+	time.sleep(.2)
+	scope.write(":CHANnel2:OFFSet "   +str(float(scope.query("MEASure:STATistic:ITEM? AVERages,VAVG,CHANnel2"))*-1))
+	time.sleep(.2)
+	scope.write(":CHANnel1:SCALe "    +str(float(scope.query("MEASure:STATistic:ITEM? AVERages,VPP,CHANnel1")) / 7))
+	time.sleep(.2)
+	scope.write(":CHANnel2:SCALe "    +str(float(scope.query("MEASure:STATistic:ITEM? AVERages,VPP,CHANnel2")) / 7))
 
-time.sleep(.3)
-scope.write(":MEASure:SETup:PSA CHANnel1")
-scope.write(":MEASure:STATistic:ITEM RPHase")
-scope.write(":MEASure:STATistic:RESet")
+scope.write(":ACQuire:TYPE AVERages")
+scope.write(":ACQuire:AVERages 8")
+
+print("+---------+------------------+---------+-----------+-------+")
+row = ["Step", "Frequency", "Phase", "Magnitude", "Ratio"]
+print('| {:>7} | {:>16} | {:>7} | {:>9} | {:>5} |'.format(*row))
+print("+---------+------------------+---------+-----------+-------+")
 
 for i in range(freq_steps):
-	scope.write("TIMebase:MAIN:SCAle "+ str(1/(8*freqs[i])))
+	scope.write("TIMebase:MAIN:SCAle "+ str(1/(10*freqs[i])))
 	awg.write(':SOUR1:FREQ '+str(freqs[i]))
 	scope.write(":DISPlay:CLEar")	
 	scope.write(":MEASure:STATistic:RESet")
-	time.sleep(1.5)
+	time.sleep(1)
 	ch1_vpp[i] = scope.query("MEASure:STATistic:ITEM? AVERages,VPP,CHANnel1")
 	ch2_vpp[i] = scope.query("MEASure:STATistic:ITEM? AVERages,VPP,CHANnel2")
-	phase_values[i] = scope.query("MEASure:STATistic:ITEM? AVERages,RPHase")
+	phase_values[i] = float(scope.query("MEASure:STATistic:ITEM? AVERages,RPHase"))*-1
 	db[i] = 20*np.log10(ch2_vpp[i]/ch1_vpp[i])
-	print (str(i+1) + '/' + str(freq_steps) + ' ' + f'{round(freqs[i],2):,}' + 'Hz ' + str(round(phase_values[i],2)) + '° ' + str(round(db[i],2)) + 'dB')
+	row = [str(i+1) + '/' + str(freq_steps), "{:,.2f}".format(freqs[i]) + 'Hz', "{:,.2f}".format(phase_values[i]) + '°', "{:,.2f}".format(db[i]) + 'dB', "{:.3f}".format(ch2_vpp[i]/ch1_vpp[i])]
+	print('| {:>7} | {:>16} | {:>7} | {:>9} | {:>5} |'.format(*row))
 	scope.set_channel_scale(2, ch2_vpp[i] / 7)
+	time.sleep(.2)
 
-print("-"*32)
+print("+---------+-----------------+---------+-----------+-------+")
 
 def find_nearest(array, value):
 	array = np.asarray(array)
@@ -244,6 +255,7 @@ if scale == 'db' or scale == 'both':
 	plt.axvline(freq_cutoff, color = 'orange', linestyle = ':', label = 'Cutoff Frequency (~ ' + f'{round(freq_cutoff,2):,}' + "Hz)")
 plt.xlabel('f')
 plt.ylabel('°')
+plt.yticks( range(-90,10,10) )
 plt.title('Phase Bode Plot')
 plt.grid()
 plt.xscale(sweep)
