@@ -18,11 +18,11 @@ The scope and function generator can be connected by either USB-TMC or LAN.
 
 | parameter | possible values | example |
 | ------------- | ------------- | ------------- |
-| start_frequency  | number  | 1000 |
-| end_frequency  | number  | 100000 |
-| frequency_steps  | number  | 20 |
+| start_freq  | number  | 1000 |
+| end_freq  | number  | 800000 |
+| steps  | number  | 20 |
 | vpp  | number  | 5 |
-| sweep_type  | 'log' or 'lin'  | log |
+| sweep  | 'log' or 'linear'  | log |
 | scale  | 'db', 'v' or 'both'  | db |
 | scope_id  | VISA address  | TCPIP::192.168.1.2::INSTR |
 | awg_id  | VISA address  | USB0::0x1AB1::0x0643::DG8A24131337::INSTR |
